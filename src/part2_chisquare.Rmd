@@ -1,0 +1,107 @@
+---
+title: "Part 2 - Chi-square introduction"
+output: html_document
+---
+
+## Overview
+
+In Part 2, we'll do an introduction to chi-square test for independence in R using lizard tail breakage data recorded at Jornada Basin Long Term Ecological Research site. 
+
+**Data from:** Lightfoot, D. 2017. Lizard pitfall trap data (LTER-II, LTER-III) ver 36. Environmental Data Initiative. https://doi.org/10.6073/pasta/ff37b4cace16a9943575f3fd7067064e (Accessed 2020-07-23).
+
+The data are in data/lizards.csv of this project. 
+
+## Getting started
+
+- Add your own new .Rmd to the src/ folder for Part 2 to follow along on your own (note that the instructor key is also included in src/ - but you should be typing this out on your own for improved learning and retention!)
+
+- Complete the following to practice the tools & concepts covered in Week 9 lectures (chi-square)
+
+## Step 2. Attach required packages
+
+For this part, you'll need:
+
+- `tidyverse`
+- `here`
+- `janitor`
+- `broom`
+
+```{r setup, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(broom)
+```
+
+## Step 3. Get data & take a look
+
+Read in the lizards.csv data and take a look (using `View(lizards)` in the Console) to familiarize yourself with the data structure: 
+```{r}
+lizards <- read_csv(here("data","lizards.csv"))
+```
+
+And for fun, let's find the counts of each lizard species in the data: 
+```{r}
+lizards %>% 
+  count(spp) %>% 
+  arrange(-n)
+```
+
+The most commonly observed lizard here (UTST) is *Uta stansburiana*, or commonly the side-blotched lizard. We'll continue by exploring just that lizard. 
+
+## Make a subset
+
+Make a subset from `lizards` that only contains observations for: 
+ 
+- side-blotched lizards (UTST)
+- at sites "IBPE" (enclosure grassland site), "RABB" (rabbit mesquite site), and "EAST" (east tarbush site)
+- where the tail condition is recorded as either "W" (whole) or "B" (broken)
+
+```{r}
+utst <- lizards %>% 
+  filter(spp == "UTST") %>% 
+  filter(site %in% c("IBPE","RABB","EAST")) %>% 
+  filter(tail %in% c("B","W"))
+```
+
+## Find counts & proportions, put in a table
+
+The `janitor::tabyl()` function gets this pretty close to contingency table format...
+
+```{r}
+tail_counts <- utst %>% 
+  janitor::tabyl(site, tail)
+
+# And you can get a table with both counts & proportions! 
+tail_proportions <- tail_counts %>% 
+  adorn_percentages() %>% 
+  janitor::adorn_pct_formatting(digits = 2) %>% 
+  adorn_ns()
+```
+
+## Make contingency table and run chi-square
+
+First, we see that the site is its own variable - when we run chi-square, we really only want the counts in the table. 
+
+We can use `column_to_rownames` to convert entries in a column to stored rownames: 
+
+```{r}
+lizard_ct <- tail_counts %>% 
+  column_to_rownames(var = "site")
+```
+
+**Now** this is in shape to run chi-square. 
+
+What are we asking? Are site and tail breakage independent? In other words: is there a significant association between site and tail breakage? 
+```{r}
+lizard_x2 <- chisq.test(lizard_ct)
+lizard_x2
+
+lizard_tidy <- tidy(lizard_x2)
+```
+There is a significant association between site and lizard tail breakage ($\chi$^2^(`r lizard_tidy$parameter`) = `r round(lizard_tidy$statistic,2)`, *p* = `r round(lizard_tidy$p.value, 3)`). 
+
+Remember: you'd also want to report the actual counts and proportions in each group! 
+
+## END Part 2

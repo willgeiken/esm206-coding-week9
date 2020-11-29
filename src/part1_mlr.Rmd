@@ -1,0 +1,150 @@
+---
+title: "Part 1 - Multiple linear regression continued"
+output: html_document
+---
+
+## Overview
+
+In Part 1, we'll continue exploring multiple linear regression using the **penguins** dataset - building on what we did last week to:
+
+- Compare different permutations of the model (by AIC)
+- Explore collinearity (including VIF)
+- Return outcomes from multiple models in a table
+
+## Getting started: 
+
+- If you haven't already, fork [this repo](https://github.com/allisonhorst/esm206-coding-week9) and clone to create your own copy as a version-controlled R project
+
+- Add your own new .Rmd to the src/ folder to follow along on your own (note that the instructor key is also included in src/ - but you should be typing this out on your own for improved learning and retention!)
+
+- Complete the following to practice the tools & concepts covered in Week 9 lectures (multiple linear regression considerations & comparisons)
+
+## Step 1: Attach required packages
+
+In your .Rmd, update your setup chunk to include the following packages:
+
+- `tidyverse`
+- `palmerpenguins`
+- `GGally`
+- `stargazer`
+
+```{r setup, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(palmerpenguins)
+library(GGally)
+library(stargazer)
+```
+
+Once you've attached those libraries, `View(palmerpenguins)` in the Console to remind yourself of the data structure and variables. 
+
+## Step 2: Reminder visual data exploration
+
+We always want to view our data in a bunch of different ways (scatterplots, jitterplots, pairs plots) to explore patterns, relationships, etc. *before* analyses & regression. 
+
+Here's just a quick reminder of how to use `GGally::ggpairs()` to create a useful pairs plot (but this should not be the only exploratory viz you'd do in the wild).
+
+```{r}
+penguins %>% 
+  ggpairs(aes(color = species))
+```
+
+When considering collinearity we are usually concerned with continuous predictor variables, so we can further restrict this. **Note the Simpson's paradox examples here!**
+
+```{r}
+penguins %>% 
+  select(species, bill_length_mm:body_mass_g) %>% 
+  ggpairs(aes(color = species))
+```
+So there are moderate positive correlations that exist (e.g. the 0.719 between body mass & bill depth for gentoos), but nothing *really* high - collinearity is not a concern here (though you could explore it with the `car::vif()` function. 
+
+## Comparing regression models
+
+Here, we are going to compare different versions of a regression model with penguin mass as the dependent variable in each. **DISCLAIMER:** If we were doing this in the wild, we'd need to do *a lot* of background research to understand conceptually which variables should be included and why. As we are (probably) not penguin experts, we will pretend we've already done that extensive research and exploration to justify variable selection. 
+
+The 4 model versions we will compare for this exercise are: 
+
+(1) Penguin Mass ~ Flipper Length + Species
+(2) Penguin Mass ~ Flipper Length + Species
+(3) Penguin Mass ~ Flipper Length + Species + Sex + Bill Length
+(4) Penguin Mass ~ Flipper Length + Species + Sex + Bill Length + Island
+
+Create the 4 models in your code as follows: 
+
+```{r}
+lm1 <- lm(body_mass_g ~ flipper_length_mm + species, data = penguins)
+
+lm2 <- lm(body_mass_g ~ flipper_length_mm + species + sex, data = penguins)
+
+lm3 <- lm(body_mass_g ~ flipper_length_mm + species + sex + bill_length_mm, data = penguins)
+
+lm4 <- lm(body_mass_g ~ flipper_length_mm + species + sex + bill_length_mm + island, data = penguins)
+
+
+```
+
+Explore the outputs of the different model variations. How does the coefficient of determination (adjusted R^2^) change? How do the coefficient values change?
+
+We should also look at the diagnostics for each. Do you have any second thoughts about the model validity when you explore diagnostic plots for normality of residuals, homoscedasticity and potential outliers?
+```{r}
+# plot(lm1) # No concerns
+# plot(lm2) # No concerns
+# plot(lm3) # No concerns
+# plot(lm4) # No concerns
+```
+
+## Compare the model AIC values
+
+In lecture we learned about the Akaike Information Criterion to compare the "quality" of models, as a measure of balance between model fit and complexity (since there is a penalty for added variables). Use the `AIC` function to find the AIC value for each model: 
+
+```{r}
+AIC(lm1) # 5031.52
+AIC(lm2) # 4740.77
+AIC(lm3) # 4733.57 (lowest of these 4)
+AIC(lm4) # 4736.98 (added island, AIC goes UP)
+```
+
+Based on these 4 models only, what model does the Akaike Information Criterion indicate is the best balance between fit & complexity? 
+
+Does that mean we should choose to pick that model based on that alone? No! It is on more piece of information to consider. Context, critical thinking, conceptual understanding of relationships between variables all need to be the major drivers in variable selection. 
+
+## Returning results of multiple models
+
+    "All models are wrong, but some are useful." - George Box
+
+All models are wrong, and sometimes it's hard to know which one is the *best* -- so sometimes, it makes sense to show the results of multiple model permutations and let the audience compare them on their own. 
+
+The `stargazer` package, which we used to make a table of regression results last week, allows you to quickly show results of multiple regression models side-by-side! 
+
+For example, let's say I considered my different models and decided that models 1 and 3 will be included in my final report. I can make a table that includes results from both as follows (remember to include `results = 'asis'` in the code chunk header):
+
+```{r, results = 'asis'}
+stargazer(lm1, lm3, type = "html")
+```
+
+Notice that each of the models appears in its own column for easier model comparison! On your own, practice interpreting the coefficient estimates in each version of that model.
+
+## Omitted variable bias in action - Simpson's paradox
+
+In lecture, we learned about omitted variable bias. One special case is when the trend is completely reversed due to an erroneously omitted variable. Let's explore that in penguins! 
+
+First, let's make a graph of flipper length versus bill depth, ignoring species:
+```{r}
+ggplot(data = penguins, aes(x = flipper_length_mm, y = bill_depth_mm)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+We can see that the resulting trend, if we ignore other variables, is *negative*. 
+
+What happens when we *include* species as a variable?
+
+```{r}
+ggplot(data = penguins, aes(x = flipper_length_mm, y = bill_depth_mm, group = species)) +
+  geom_point(aes(color = species)) +
+  geom_smooth(method = "lm")
+```
+
+Now we can see the takeaway trend within each group is the opposite: there is a positive trend between flipper length and bill depth! 
+
+## END PART 1
