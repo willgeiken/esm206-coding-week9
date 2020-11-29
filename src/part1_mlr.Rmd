@@ -49,7 +49,7 @@ penguins %>%
   ggpairs(aes(color = species))
 ```
 
-When considering collinearity we are usually concerned with continuous predictor variables, so we can further restrict this. **Note the Simpson's paradox examples here!**
+When considering collinearity we are usually concerned with continuous predictor variables, so we can further restrict this.
 
 ```{r}
 penguins %>% 
@@ -79,13 +79,12 @@ lm2 <- lm(body_mass_g ~ flipper_length_mm + species + sex, data = penguins)
 lm3 <- lm(body_mass_g ~ flipper_length_mm + species + sex + bill_length_mm, data = penguins)
 
 lm4 <- lm(body_mass_g ~ flipper_length_mm + species + sex + bill_length_mm + island, data = penguins)
-
-
 ```
 
 Explore the outputs of the different model variations. How does the coefficient of determination (adjusted R^2^) change? How do the coefficient values change?
 
 We should also look at the diagnostics for each. Do you have any second thoughts about the model validity when you explore diagnostic plots for normality of residuals, homoscedasticity and potential outliers?
+
 ```{r}
 # plot(lm1) # No concerns
 # plot(lm2) # No concerns
@@ -129,15 +128,14 @@ Notice that each of the models appears in its own column for easier model compar
 In lecture, we learned about omitted variable bias. One special case is when the trend is completely reversed due to an erroneously omitted variable. Let's explore that in penguins! 
 
 First, let's make a graph of flipper length versus bill depth, ignoring species:
+
 ```{r}
 ggplot(data = penguins, aes(x = flipper_length_mm, y = bill_depth_mm)) +
   geom_point() +
   geom_smooth(method = "lm")
 ```
 
-We can see that the resulting trend, if we ignore other variables, is *negative*. 
-
-What happens when we *include* species as a variable?
+We can see that the resulting trend, if we ignore other variables, is *negative*. What happens when we *include* species as a variable?
 
 ```{r}
 ggplot(data = penguins, aes(x = flipper_length_mm, y = bill_depth_mm, group = species)) +
