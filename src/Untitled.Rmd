@@ -1,0 +1,92 @@
+---
+title: 'Week 9 Lab: Part 1 Multiple Linear Regression'
+author: "Will Geiken"
+date: "11/30/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(palmerpenguins)
+library(GGally)
+library(stargazer)
+```
+
+View the penguins data set
+
+Compare the variables using ggpairs()
+```{r}
+penguins %>% 
+  ggpairs()
+```
+
+```{r}
+penguins %>% 
+  select(species, bill_length_mm:body_mass_g) %>% 
+  ggpairs(aes(color = species))
+```
+
+## Build a few different models
+Penguin mass is our dependent variable
+
+1. Predictors = flipper length, and species
+2. flipper length, species, and sex ect. for 3 and 4
+
+```{r}
+lm1 <- lm(body_mass_g ~ flipper_length_mm + species, data = penguins)
+
+#lm1 
+#call to see that Adelie is my reference species. 1mm increase in flipper_length_mm to lead to 40.71g increase in mass.
+
+lm2 <- lm(body_mass_g ~ flipper_length_mm + species + sex, data = penguins)
+
+lm3 <- lm(body_mass_g ~ flipper_length_mm + species + sex + bill_length_mm, data = penguins)
+
+lm4 <- lm(body_mass_g ~ flipper_length_mm + species + sex + bill_length_mm + island, data = penguins)
+```
+
+Use AIC to compare the strength of these regressions
+
+## Find the AIC value for each model
+
+```{r}
+AIC(lm1)
+#5031.523
+AIC(lm2)
+#4740.774 (lower value with addition of sex means better model)
+AIC(lm3)
+#4733.574
+AIC(lm4)
+#4736.979 (goes back up for island, so not worth adding that variable)
+```
+Lowest AIC was for model 3, indicating that it is the best balance of model fit and model complexity based on the AIC. But that's not the end all be all. We would look at the diagnostics for each model (normality and heteroscedasticity) and research on all the variables etc. So, which to choose?
+
+Sometimes you show multiple models.
+
+## Use stargazer package for a table with multiple model outputs
+
+```{r, results = 'asis'}
+#results = asis because stargazer already does it in html
+stargazer(lm1, lm3, lm4, type = "html")
+
+```
+
+## Omitted variable bias in action
+Simpson's paradox
+```{r}
+#this ignores species, and shows a negative trend
+ggplot(data = penguins, aes(x = flipper_length_mm, y = bill_depth_mm))+
+  geom_point()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+#included, the species shows a positive relationship
+ggplot(data = penguins, aes(x = flipper_length_mm, 
+                            y = bill_depth_mm,
+                            group = species))+
+  geom_point(aes(color = species))+
+  geom_smooth(method = "lm")
+```
+
